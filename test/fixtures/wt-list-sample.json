@@ -1,0 +1,246 @@
+{
+  "schema": 2,
+  "repo": {
+    "default_branch": "main",
+    "forge": {
+      "url": "https://github.com/athul-ramesh/rex-agent.nvim",
+      "provider": "github",
+      "host": "github.com",
+      "owner": "athul-ramesh",
+      "name": "rex-agent.nvim",
+      "remote": "origin"
+    }
+  },
+  "collected": {
+    "ci": false,
+    "summary": false
+  },
+  "items": [
+    {
+      "branch": "main",
+      "head": {
+        "sha": "6e425082ba7671a499e37457d2c81e63ebbe9afa",
+        "short_sha": "6e42508",
+        "subject": "Merge pull request #7 from athul-ramesh/fix/private-forward-ready",
+        "committed_at": "2026-11-08T11:59:56Z"
+      },
+      "worktree": {
+        "path": "/Users/athulramesh/projects/rexproject/rex-agent.nvim",
+        "main": true,
+        "current": true,
+        "previous": false,
+        "detached": false,
+        "branch_mismatch": false,
+        "duplicate_branch": false,
+        "changes": {
+          "staged": false,
+          "modified": false,
+          "untracked": false,
+          "renamed": false,
+          "deleted": false,
+          "conflicted": false,
+          "diff": {
+            "added": 0,
+            "deleted": 0
+          }
+        }
+      },
+      "upstream": {
+        "remote": "origin",
+        "branch": "main",
+        "ahead": 0,
+        "behind": 0
+      },
+      "display": {
+        "state": "is_main",
+        "symbols": "^|",
+        "statusline": "main  \u001b[2m^\u001b[22m\u001b[2m|\u001b[22m"
+      }
+    },
+    {
+      "branch": "fix/open-seed-ready",
+      "head": {
+        "sha": "643b16880ca5e01c8a9321797aeb272ad38277ac",
+        "short_sha": "643b168",
+        "subject": null,
+        "committed_at": null
+      },
+      "worktree": {
+        "path": "/private/tmp/rex-agent-open-seed-ready",
+        "main": false,
+        "current": false,
+        "previous": false,
+        "detached": false,
+        "prunable": {
+          "reason": "gitdir file points to non-existent location"
+        },
+        "branch_mismatch": true,
+        "duplicate_branch": false,
+        "operation": null,
+        "changes": null
+      },
+      "default_branch": {
+        "ahead": null,
+        "behind": null,
+        "diff": null,
+        "orphan": null,
+        "integration": null,
+        "merge_conflicts": null
+      },
+      "upstream": null,
+      "marker": null,
+      "display": {
+        "symbols": "⊟",
+        "statusline": "fix/open-seed-ready  \u001b[33m⊟\u001b[39m"
+      }
+    },
+    {
+      "branch": "feat/multi-agent-profiles",
+      "head": {
+        "sha": "12813315afe4c8792a2097622017cf2c7b2e2ffe",
+        "short_sha": "1281331",
+        "subject": null,
+        "committed_at": null
+      },
+      "worktree": {
+        "path": "/private/tmp/rex-agent-multi-agent",
+        "main": false,
+        "current": false,
+        "previous": false,
+        "detached": false,
+        "prunable": {
+          "reason": "gitdir file points to non-existent location"
+        },
+        "branch_mismatch": true,
+        "duplicate_branch": false,
+        "operation": null,
+        "changes": null
+      },
+      "default_branch": {
+        "ahead": null,
+        "behind": null,
+        "diff": null,
+        "orphan": null,
+        "integration": null,
+        "merge_conflicts": null
+      },
+      "upstream": null,
+      "marker": null,
+      "display": {
+        "symbols": "⊟",
+        "statusline": "feat/multi-agent-profiles  \u001b[33m⊟\u001b[39m"
+      }
+    },
+    {
+      "branch": "feat/float-and-rel-seed",
+      "head": {
+        "sha": "f414ac1b249863db51e3fb9aa79b2062fc0597c3",
+        "short_sha": "f414ac1",
+        "subject": null,
+        "committed_at": null
+      },
+      "worktree": {
+        "path": "/private/tmp/rex-agent-impl",
+        "main": false,
+        "current": false,
+        "previous": false,
+        "detached": false,
+        "prunable": {
+          "reason": "gitdir file points to non-existent location"
+        },
+        "branch_mismatch": true,
+        "duplicate_branch": false,
+        "operation": null,
+        "changes": null
+      },
+      "default_branch": {
+        "ahead": null,
+        "behind": null,
+        "diff": null,
+        "orphan": null,
+        "integration": null,
+        "merge_conflicts": null
+      },
+      "upstream": null,
+      "marker": null,
+      "display": {
+        "symbols": "⊟",
+        "statusline": "feat/float-and-rel-seed  \u001b[33m⊟\u001b[39m"
+      }
+    },
+    {
+      "branch": "arena/float-seed-1",
+      "head": {
+        "sha": "9b8a16d1e761f54911b77c79d980389386f8666c",
+        "short_sha": "9b8a16d",
+        "subject": null,
+        "committed_at": null
+      },
+      "worktree": {
+        "path": "/private/tmp/rex-agent-arena/candidate-1",
+        "main": false,
+        "current": false,
+        "previous": false,
+        "detached": false,
+        "prunable": {
+          "reason": "gitdir file points to non-existent location"
+        },
+        "branch_mismatch": true,
+        "duplicate_branch": false,
+        "operation": null,
+        "changes": null
+      },
+      "default_branch": {
+        "ahead": null,
+        "behind": null,
+        "diff": null,
+        "orphan": null,
+        "integration": null,
+        "merge_conflicts": null
+      },
+      "upstream": null,
+      "marker": null,
+      "display": {
+        "symbols": "⊟",
+        "statusline": "arena/float-seed-1  \u001b[33m⊟\u001b[39m"
+      }
+    },
+    {
+      "branch": "arena/float-seed-2",
+      "head": {
+        "sha": "9b8a16d1e761f54911b77c79d980389386f8666c",
+        "short_sha": "9b8a16d",
+        "subject": null,
+        "committed_at": null
+      },
+      "worktree": {
+        "path": "/private/tmp/rex-agent-arena/candidate-2",
+        "main": false,
+        "current": false,
+        "previous": false,
+        "detached": false,
+        "prunable": {
+          "reason": "gitdir file points to non-existent location"
+        },
+        "branch_mismatch": true,
+        "duplicate_branch": false,
+        "operation": null,
+        "changes": null
+      },
+      "default_branch": {
+        "ahead": null,
+        "behind": null,
+        "diff": null,
+        "orphan": null,
+        "integration": null,
+        "merge_conflicts": null
+      },
+      "upstream": null,
+      "marker": null,
+      "display": {
+        "symbols": "⊟",
+        "statusline": "arena/float-seed-2  \u001b[33m⊟\u001b[39m"
+      }
+    }
+  ]
+}
