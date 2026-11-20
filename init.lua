@@ -27,6 +27,8 @@ local NEW_ID    = "new"
 local DEAD_ID   = "dead"
 local REMOVE_ID = "remove"
 local FORCE_ID  = "force"
+local WT_PREVIOUS = "-"
+local WT_DEFAULT  = "^"
 
 local function raise(message)
   error("worktrunk: " .. message, 0)
@@ -201,12 +203,25 @@ local function intent_switch(row)
   return { kind = "switch", path = row.path, branch = row.branch }
 end
 
+local function intent_switch_to(target, branch)
+  return { kind = "switch", path = target, branch = branch }
+end
+
 local function intent_create(branch, base)
   return { kind = "create", branch = branch, base = base }
 end
 
 local function intent_remove(path, force)
   return { kind = "remove", path = path, force = force == true }
+end
+
+local function main_switch_intent(listed)
+  if listed.main then
+    local row = row_by_path(listed.rows, listed.main)
+    if row then return intent_switch(row) end
+    return intent_switch_to(listed.main)
+  end
+  return intent_switch_to(WT_DEFAULT)
 end
 
 local function create_base()
@@ -680,35 +695,31 @@ end
 local function previous_worktree(ctx)
   local cwd = repo_cwd(ctx)
   local listed = list_worktrees(cwd)
-  local outcome = switch_worktree(cwd, { kind = "switch", path = "-" })
+  local outcome = switch_worktree(cwd, intent_switch_to(WT_PREVIOUS))
   return open_switched(ctx, listed, outcome)
 end
 
 local function main_worktree(ctx)
   local cwd = repo_cwd(ctx)
   local listed = list_worktrees(cwd)
-  local intent
-  if listed.main then
-    local row = row_by_path(listed.rows, listed.main)
-    intent = row and intent_switch(row) or { kind = "switch", path = listed.main }
-  else
-    intent = { kind = "switch", path = "^" }
-  end
-  return open_switched(ctx, listed, switch_worktree(cwd, intent))
+  return open_switched(ctx, listed, switch_worktree(cwd, main_switch_intent(listed)))
+end
+
+local function main_path_for_remove(ctx, path)
+  local cwd = focused_terminal_cwd(ctx.block_id)
+  local probe = cwd or (is_directory(path) and path or nil)
+  if not probe then return cwd, nil end
+  local ok, listed = pcall(list_worktrees, probe)
+  if not ok then return cwd, nil end
+  if listed.main == path then raise("can't remove the main worktree") end
+  return cwd, listed.main
 end
 
 local function remove_at(ctx, args)
   args = args or {}
   local path = normalize_path(args.path or "")
   if not is_trackable(path) then raise("not an absolute path: " .. tostring(args.path)) end
-  local cwd = focused_terminal_cwd(ctx.block_id)
-  local main
-  local probe = cwd or (is_directory(path) and path or nil)
-  if probe then
-    local ok, listed = pcall(list_worktrees, probe)
-    if ok and listed.main == path then raise("can't remove the main worktree") end
-    if ok then main = listed.main end
-  end
+  local cwd, main = main_path_for_remove(ctx, path)
   remove_worktree(cwd, intent_remove(path, args.force == true))
   return M.close(ctx, path, main)
 end
