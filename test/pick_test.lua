@@ -130,16 +130,17 @@ do
   local items = pick.args.items
   t.check("asks with the worktree picker",
     pick.args.title == "Worktree" and pick.args.placeholder == "Filter worktrees")
-  t.check("lists switchable rows, then New worktree",
-    #items == 4
+  t.check("lists live rows, then dead, new, and remove",
+    #items == 5
       and items[1].id == MAIN and items[1].title == "main" and items[1].icon == "folder"
       and items[1].detail == "current, dirty" and items[1].subtitle == MAIN
       and items[1].selected == true
-      and items[2].id == FIX and items[2].title == "fix/login" and items[2].icon == "branch"
-      and items[2].detail == "prunable" and items[2].selected == nil
-      and items[3].id == FEAT and items[3].title == "feat/diff" and items[3].detail == "dirty"
-      and items[4].id == "new" and items[4].title == "New worktree…" and items[4].icon == "plus",
-    items[4] and items[4].title)
+      and items[2].id == FEAT and items[2].title == "feat/diff" and items[2].icon == "branch"
+      and items[2].detail == "dirty" and items[2].selected == nil
+      and items[3].id == "dead" and items[3].title == "Show dead worktrees…"
+      and items[4].id == "new" and items[4].title == "New worktree…" and items[4].icon == "plus"
+      and items[5].id == "remove" and items[5].title == "Remove worktree…",
+    items[5] and items[5].title)
   t.check("runs wt list in the focused terminal",
     wt_calls()[1].args.cwd == MAIN and has(wt_calls()[1].args.argv, "--format=json")
       and wt_calls()[1].args.argv[2] == "list")
@@ -154,13 +155,33 @@ do
   run(fake:add_session("home"))
   fake.env.HOME = nil
   local items = fake:calls_to("ui.pick")[1].args.items
-  t.check("shows the sample list with the home directory shortened",
-    #items == 7
-      and items[1].title == "main" and items[1].icon == "folder" and items[1].detail == "current"
+  t.check("hides prunable rows and shows the commit on the live row",
+    #items == 4
+      and items[1].title == "main" and items[1].icon == "folder"
+      and items[1].detail == "current · 6e42508 Merge pull request #7 from athul-ramesh/fix/private-forward-ready"
       and items[1].subtitle == "~/projects/rexproject/rex-agent.nvim"
-      and items[2].title == "fix/open-seed-ready" and items[2].detail == "prunable"
-      and items[2].subtitle == "/private/tmp/rex-agent-open-seed-ready"
-      and items[7].title == "New worktree…" and items[7].icon == "plus")
+      and items[2].id == "dead" and items[2].title == "Show dead worktrees…"
+      and items[3].id == "new" and items[3].title == "New worktree…" and items[3].icon == "plus"
+      and items[4].id == "remove" and items[4].title == "Remove worktree…")
+end
+
+do
+  fresh()
+  local sample = assert(io.open(here .. "/fixtures/wt-list-sample.json", "r")):read("*a")
+  stub(sample, { ok = true, code = 0, stdout = "", stderr = "" })
+  fake.ui_answers = { answer("dead"), answer(nil, "cancelled") }
+  run(fake:add_session("home"))
+  local dead = fake:calls_to("ui.pick")[2]
+  local items = dead.args.items
+  t.check("Show dead worktrees lists only prunable rows, then Remove",
+    dead.args.title == "Dead worktrees"
+      and #items == 6
+      and items[1].title == "fix/open-seed-ready"
+      and items[1].id == "/private/tmp/rex-agent-open-seed-ready"
+      and items[1].detail == "prunable, mismatch · 643b168"
+      and items[1].subtitle == "/private/tmp/rex-agent-open-seed-ready"
+      and items[6].id == "remove" and items[6].title == "Remove worktree…"
+      and items[5].title == "arena/float-seed-2")
 end
 
 do
@@ -169,8 +190,8 @@ do
   fake.ui_answers = { answer(nil, "cancelled") }
   run(fake:add_session("home"))
   local items = fake:calls_to("ui.pick")[1].args.items
-  t.check("an empty repo still offers New worktree",
-    #items == 1 and items[1].id == "new")
+  t.check("an empty repo still offers new and remove",
+    #items == 2 and items[1].id == "new" and items[2].id == "remove")
 end
 
 do
@@ -184,7 +205,8 @@ do
   run(fake:add_session("home"))
   local items = fake:calls_to("ui.pick")[1].args.items
   t.check("keeps one row when two items share a path",
-    #items == 2 and items[1].id == FIX and items[1].title == "one")
+    #items == 3 and items[1].id == FIX and items[1].title == "one"
+      and items[2].id == "new" and items[3].id == "remove")
 end
 
 t.section("switching to the chosen worktree")
@@ -194,19 +216,20 @@ do
   fake.cwd = "/src/app/src"
   stub(SMALL_LIST, {
     ok = true, code = 0,
-    stdout = '{"action":"existing","branch":"fix/login","path":"/src/app.fix"}\n',
+    stdout = '{"action":"existing","branch":"feat/diff","path":"/src/app.feat"}\n',
     stderr = "directory change disabled\n",
   })
-  fake.ui_answers = { answer(FIX) }
+  fake.ui_answers = { answer(FEAT) }
   local home = fake:add_session("home")
   local result = run(home)
   local switch = wt_calls()[2]
-  t.check("switches by branch in the terminal's directory",
-    result and result.path == FIX and result.created
+  t.check("switches by path in the terminal's directory",
+    result and result.path == FEAT and result.created
       and switch.args.cwd == "/src/app/src"
-      and switch.args.argv[#switch.args.argv] == "fix/login"
+      and switch.args.argv[#switch.args.argv] == FEAT
       and has(switch.args.argv, "--format=json") and has(switch.args.argv, "--no-cd")
-      and not has(switch.args.argv, "--create") and not has(switch.args.argv, "--yes"))
+      and not has(switch.args.argv, "--create") and not has(switch.args.argv, "--yes")
+      and not has(switch.args.argv, "feat/diff"))
   t.check("ignores the status line wt writes on success", #fake:warnings() == 0, t.show(fake:warnings()))
   t.check("lists, asks, switches, then opens the session",
     t.same_list(effects(), { "wt list", "ui.pick", "wt switch", "session.create", "client.queue" }),
@@ -214,7 +237,7 @@ do
   t.check("adopts the current worktree, not the terminal subdirectory",
     t.same_list(fake:registry_lines(), {
       MAIN .. "\t" .. home .. "\t\tadopted",
-      FIX .. "\t" .. result.session_id .. "\t" .. home,
+      FEAT .. "\t" .. result.session_id .. "\t" .. home,
     }), t.show(fake:registry_lines()))
 end
 
@@ -236,18 +259,16 @@ end
 
 do
   fresh()
-  local made = "/src/app.made"
-  fake.dirs[made] = true
   stub(SMALL_LIST, {
     ok = false, code = 1,
-    stdout = '{"action":"created","branch":"fix/login","path":"/src/app.made"}\n',
+    stdout = '{"action":"created","branch":"feat/diff","path":"/src/app.made"}\n',
     stderr = "hook failed\n",
   })
-  fake.ui_answers = { answer(FIX) }
-  local result = run(fake:add_session("home"))
-  t.check("still opens the session when wt prints a path and then fails",
-    result and result.path == made and #fake:warnings() == 1
-      and fake:warnings()[1]:find("hook failed", 1, true), t.show(fake:warnings()))
+  fake.ui_answers = { answer(FEAT) }
+  local err = t.error_of(run, fake:add_session("home"))
+  t.check("does not open a session when wt switch fails",
+    err and err:find("hook failed", 1, true)
+      and #fake:calls_to("session.create") == 0 and #fake.sessions == 1, err)
 end
 
 do
@@ -256,7 +277,7 @@ do
     ok = false, code = 1, stdout = "",
     stderr = "No branch named fix/login\n",
   })
-  fake.ui_answers = { answer(FIX) }
+  fake.ui_answers = { answer(FEAT) }
   local err = t.error_of(run, fake:add_session("home"))
   t.check("reports wt's error when the switch has no path",
     err and err:find("No branch named fix/login", 1, true) and #fake.sessions == 1, err)
@@ -431,13 +452,261 @@ do
     err and err:find("unsupported schema 1", 1, true) and #fake:calls_to("ui.pick") == 0, err)
 end
 
+t.section("the row detail")
+
+do
+  fresh()
+  local home = fake:add_session("home")
+  fake.actions.worktree_go.run(ctx(home), { path = FEAT, branch = "feat/diff" })
+  stub(SMALL_LIST, { ok = true, code = 0, stdout = "", stderr = "" })
+  fake.ui_answers = { answer(nil, "cancelled") }
+  run(home)
+  local feat
+  for _, item in ipairs(fake:calls_to("ui.pick")[1].args.items) do
+    if item.id == FEAT then feat = item end
+  end
+  t.check("marks a worktree that already has a session",
+    feat and feat.detail == "session, dirty", feat and feat.detail)
+end
+
+do
+  fresh()
+  local signal = [[{
+    "schema": 2,
+    "items": [{
+      "branch": "fix/login",
+      "head": { "short_sha": "abc1234", "subject": "Fix login" },
+      "worktree": {
+        "path": "/src/app.fix",
+        "previous": true,
+        "duplicate_branch": true,
+        "branch_mismatch": true
+      }
+    }]
+  }]]
+  stub(signal, { ok = true, code = 0, stdout = "", stderr = "" })
+  fake.ui_answers = { answer(nil, "cancelled") }
+  run(fake:add_session("home"))
+  local row = fake:calls_to("ui.pick")[1].args.items[1]
+  t.check("shows previous, duplicate, mismatch, and the commit",
+    row.detail == "previous, duplicate, mismatch · abc1234 Fix login"
+      and row.subtitle == FIX, row.detail)
+end
+
+t.section("removing a worktree")
+
+local function remove_ok(argv)
+  if argv[2] == "remove" then
+    return { ok = true, code = 0, stdout = "{}", stderr = "" }
+  end
+  return { ok = false, code = 1, stdout = "", stderr = "unexpected wt " .. tostring(argv[2]) .. "\n" }
+end
+
+local function remove_call()
+  for _, call in ipairs(wt_calls()) do
+    if call.args.argv[2] == "remove" then return call end
+  end
+end
+
+do
+  fresh()
+  stub(SMALL_LIST, remove_ok)
+  fake.ui_answers = { answer("remove"), answer(nil, "cancelled") }
+  run(fake:add_session("home"))
+  local items = fake:calls_to("ui.pick")[2].args.items
+  t.check("the remove list leaves out main and prunable rows",
+    fake:calls_to("ui.pick")[2].args.title == "Remove worktree"
+      and #items == 1 and items[1].id == FEAT and items[1].title == "feat/diff")
+  t.check("cancelling remove does not run wt remove", remove_call() == nil)
+end
+
+do
+  fresh()
+  local home = fake:add_session("home")
+  local opened = fake.actions.worktree_go.run(ctx(home), { path = FEAT })
+  stub(SMALL_LIST, function(argv)
+    if argv[2] == "remove" and has(argv, "--force") then return remove_ok(argv) end
+    if argv[2] == "remove" then
+      return { ok = false, code = 1, stdout = "", stderr = "worktree is dirty\n" }
+    end
+    return remove_ok(argv)
+  end)
+  fake.ui_answers = { answer("remove"), answer(FEAT), answer(nil, "cancelled") }
+  t.check("a dirty worktree asks before forcing, and cancel removes nothing",
+    run(home) == nil and remove_call() == nil and fake:session(opened.session_id) ~= nil)
+  fake.ui_answers = { answer("remove"), answer(FEAT), answer("force") }
+  local closed = run(home)
+  local argv = remove_call().args.argv
+  t.check("force remove passes --force and the path, then closes the session",
+    closed and closed.closed and closed.session_id == opened.session_id
+      and fake:session(opened.session_id) == nil
+      and has(argv, "--format=json") and has(argv, "--force") and argv[#argv] == FEAT
+      and not has(argv, "feat/diff"),
+    argv and table.concat(argv, " "))
+end
+
+do
+  fresh()
+  local home = fake:add_session("home")
+  local opened = fake.actions.worktree_go.run(ctx(home), { path = FIX })
+  stub(SMALL_LIST, remove_ok)
+  fake.ui_answers = { answer("dead"), answer("remove"), answer(FIX) }
+  local closed = run(home)
+  local argv = remove_call().args.argv
+  t.check("remove from the dead list uses the path and skips force when clean",
+    closed and closed.closed and argv[#argv] == FIX and not has(argv, "--force")
+      and fake:session(opened.session_id) == nil,
+    argv and table.concat(argv, " "))
+end
+
+do
+  fresh()
+  local home = fake:add_session("home")
+  local opened = fake.actions.worktree_go.run(ctx(home), { path = FEAT })
+  stub(SMALL_LIST, function(argv)
+    if argv[2] == "remove" then
+      return { ok = false, code = 1, stdout = "", stderr = "remove refused\n" }
+    end
+    return remove_ok(argv)
+  end)
+  fake.ui_answers = { answer("remove"), answer(FEAT), answer("force") }
+  local err = t.error_of(run, home)
+  t.check("a failed remove leaves the session open",
+    err and err:find("remove refused", 1, true) and fake:session(opened.session_id) ~= nil, err)
+end
+
+do
+  fresh()
+  stub(SMALL_LIST, {
+    ok = true, code = 0,
+    stdout = '{"action":"existing","branch":"fix/login","path":"/src/app.fix"}',
+    stderr = "",
+  })
+  fake.ui_answers = { answer("dead"), answer(FIX) }
+  local result = run(fake:add_session("home"))
+  local switch = wt_calls()[2]
+  t.check("a dead row switches by its path",
+    result and result.path == FIX and switch.args.argv[#switch.args.argv] == FIX)
+end
+
+t.section("previous and main")
+
+do
+  fresh()
+  fake.cwd = "/src/app/src"
+  stub(SMALL_LIST, function(argv)
+    if argv[#argv] == "-" then
+      return { ok = true, code = 0, stdout = '{"branch":"feat/diff","path":"/src/app.feat"}', stderr = "" }
+    end
+    return { ok = false, code = 1, stdout = "", stderr = "unexpected\n" }
+  end)
+  local result = fake.actions.worktree_previous.run(ctx(fake:add_session("home")))
+  local switch = wt_calls()[2]
+  t.check("worktree_previous runs wt switch -",
+    result and result.path == FEAT and result.created
+      and switch.args.cwd == "/src/app/src"
+      and switch.args.argv[#switch.args.argv] == "-"
+      and has(switch.args.argv, "--format=json") and has(switch.args.argv, "--no-cd")
+      and switch.args.argv[2] == "switch")
+end
+
+do
+  fresh()
+  stub(SMALL_LIST, {
+    ok = false, code = 1,
+    stdout = '{"branch":"feat/diff","path":"/src/app.feat"}',
+    stderr = "no previous worktree\n",
+  })
+  local err = t.error_of(fake.actions.worktree_previous.run, ctx(fake:add_session("home")))
+  t.check("worktree_previous does not open a session when wt switch fails",
+    err and err:find("no previous worktree", 1, true) and #fake:calls_to("session.create") == 0, err)
+end
+
+do
+  fresh()
+  stub(SMALL_LIST, function(argv)
+    if argv[2] == "switch" then
+      return { ok = true, code = 0, stdout = '{"branch":"main","path":"/src/app"}', stderr = "" }
+    end
+    return { ok = false, code = 1, stdout = "", stderr = "unexpected\n" }
+  end)
+  local home = fake:add_session("home")
+  local result = fake.actions.worktree_main.run(ctx(home))
+  local argv = wt_calls()[2].args.argv
+  t.check("worktree_main switches to the main path",
+    result and result.path == MAIN and result.session_id == home and not result.created
+      and argv[#argv] == MAIN and not has(argv, "main") and not has(argv, "^"))
+end
+
+do
+  fresh()
+  local no_main = '{"schema":2,"items":[{"branch":"fix/login","worktree":{"path":"/src/app.fix"}}]}'
+  stub(no_main, function(argv)
+    if argv[#argv] == "^" then
+      return { ok = true, code = 0, stdout = '{"branch":"main","path":"/src/app"}', stderr = "" }
+    end
+    return { ok = false, code = 1, stdout = "", stderr = "unexpected\n" }
+  end)
+  local result = fake.actions.worktree_main.run(ctx(fake:add_session("home")))
+  t.check("worktree_main uses wt switch ^ when the list has no main path",
+    result and result.path == MAIN and wt_calls()[2].args.argv[#wt_calls()[2].args.argv] == "^")
+end
+
+do
+  fresh()
+  local home = fake:add_session("home")
+  local opened = fake.actions.worktree_go.run(ctx(home), { path = FIX })
+  stub(SMALL_LIST, remove_ok)
+  local closed = fake.actions.worktree_remove.run(ctx(home), { path = FIX })
+  local argv = remove_call().args.argv
+  t.check("worktree_remove removes by path and closes the session",
+    closed and closed.closed and closed.session_id == opened.session_id
+      and argv[2] == "remove" and has(argv, "--format=json") and not has(argv, "--force")
+      and argv[#argv] == FIX and fake:session(opened.session_id) == nil)
+end
+
+do
+  fresh()
+  stub(SMALL_LIST, remove_ok)
+  local home = fake:add_session("home")
+  fake.actions.worktree_remove.run(ctx(home), { path = FIX .. "/", force = true })
+  local argv = remove_call().args.argv
+  t.check("worktree_remove passes --force when asked",
+    has(argv, "--force") and argv[#argv] == FIX)
+end
+
+do
+  fresh()
+  stub(SMALL_LIST, remove_ok)
+  local err = t.error_of(fake.actions.worktree_remove.run, ctx(fake:add_session("home")), { path = MAIN })
+  t.check("worktree_remove refuses the main worktree",
+    err and err:find("can't remove the main worktree", 1, true) and remove_call() == nil, err)
+end
+
+do
+  fresh()
+  local home = fake:add_session("home")
+  local opened = fake.actions.worktree_go.run(ctx(home), { path = FIX })
+  stub(SMALL_LIST, function(argv)
+    if argv[2] == "remove" then
+      return { ok = false, code = 1, stdout = "{}", stderr = "still checked out\n" }
+    end
+    return remove_ok(argv)
+  end)
+  local err = t.error_of(fake.actions.worktree_remove.run, ctx(home), { path = FIX })
+  t.check("worktree_remove does not close the session when wt remove fails",
+    err and err:find("still checked out", 1, true) and fake:session(opened.session_id) ~= nil, err)
+end
+
 t.section("actions")
 
 do
   local M = fresh{ remotes = true, base = 1 }
-  t.check("registers switch, go, and close",
+  t.check("registers switch, go, close, previous, main, and remove",
     fake.actions.worktree and fake.actions.worktree_go and fake.actions.worktree_close
-      and fake.actions.worktree_remove == nil)
+      and fake.actions.worktree_previous and fake.actions.worktree_main
+      and fake.actions.worktree_remove
+      and fake.actions.worktree_remove.args.force == "boolean?")
   t.check("warns on options this version does not take",
     #fake:warnings() == 2 and M.options.base == "@", t.show(fake:warnings()))
   local home = fake:add_session("home")
