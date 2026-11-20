@@ -158,7 +158,7 @@ do
   t.check("hides prunable rows and shows the commit on the live row",
     #items == 4
       and items[1].title == "main" and items[1].icon == "folder"
-      and items[1].detail == "current, 6e42508, Merge pull request #7 from athul-ramesh/fix/private-forward-ready"
+      and items[1].detail == "current · 6e42508 Merge pull request #7 from athul-ramesh/fix/private-forward-ready"
       and items[1].subtitle == "~/projects/rexproject/rex-agent.nvim"
       and items[2].id == "dead" and items[2].title == "Show dead worktrees…"
       and items[3].id == "new" and items[3].title == "New worktree…" and items[3].icon == "plus"
@@ -178,7 +178,7 @@ do
       and #items == 6
       and items[1].title == "fix/open-seed-ready"
       and items[1].id == "/private/tmp/rex-agent-open-seed-ready"
-      and items[1].detail == "prunable, mismatch, 643b168"
+      and items[1].detail == "prunable, mismatch · 643b168"
       and items[1].subtitle == "/private/tmp/rex-agent-open-seed-ready"
       and items[6].id == "remove" and items[6].title == "Remove worktree…"
       and items[5].title == "arena/float-seed-2")
@@ -489,7 +489,7 @@ do
   run(fake:add_session("home"))
   local row = fake:calls_to("ui.pick")[1].args.items[1]
   t.check("shows previous, duplicate, mismatch, and the commit",
-    row.detail == "previous, duplicate, mismatch, abc1234, Fix login"
+    row.detail == "previous, duplicate, mismatch · abc1234 Fix login"
       and row.subtitle == FIX, row.detail)
 end
 

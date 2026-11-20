@@ -35,7 +35,7 @@ rex.bind("ctrl+space>ctrl+space", "pane.send_key", { key = "ctrl+space" })
 
 Run `worktree`. Rex lists each live worktree from `wt list --format=json`. The title is the branch. The second line is the directory. The main checkout uses a folder icon. The worktree you are in starts selected.
 
-The detail line can include `current`, `session`, `dirty`, `previous`, `duplicate`, `mismatch`, a short commit id, and the commit subject. `session` means this plugin already has a Rex session for that path. `duplicate` means another worktree uses the same branch. `mismatch` means the checkout does not match that branch. Prunable worktrees are not in this list.
+The detail line lists status tokens (`current`, `session`, `dirty`, `previous`, `duplicate`, `mismatch`), then a short commit id and subject after a middle dot when those are present. `session` means this plugin already has a Rex session for that path. `duplicate` means another worktree uses the same branch. `mismatch` means the checkout does not match that branch. Prunable worktrees are not in this list.
 
 The list ends with **New worktree…** and **Remove worktree…**. Rex adds **Show dead worktrees…** when any worktree is prunable.
 

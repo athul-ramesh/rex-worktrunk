@@ -144,10 +144,13 @@ local function row_detail(row, entries)
   if row.prunable then parts[#parts + 1] = "prunable" end
   if row.duplicate_branch then parts[#parts + 1] = "duplicate" end
   if row.branch_mismatch then parts[#parts + 1] = "mismatch" end
-  if row.short_sha then parts[#parts + 1] = row.short_sha end
-  if row.subject then parts[#parts + 1] = row.subject end
-  if #parts == 0 then return nil end
-  return table.concat(parts, ", ")
+  local status = #parts > 0 and table.concat(parts, ", ") or nil
+  local commit_parts = {}
+  if row.short_sha then commit_parts[#commit_parts + 1] = row.short_sha end
+  if row.subject then commit_parts[#commit_parts + 1] = row.subject end
+  local commit = #commit_parts > 0 and table.concat(commit_parts, " ") or nil
+  if status and commit then return status .. " · " .. commit end
+  return status or commit
 end
 
 local function row_item(row, entries)
@@ -170,7 +173,7 @@ end
 
 local NEW_ITEM = { id = NEW_ID, title = "New worktree…", icon = "plus" }
 local REMOVE_ITEM = { id = REMOVE_ID, title = "Remove worktree…", icon = "trash" }
-local DEAD_ITEM = { id = DEAD_ID, title = "Show dead worktrees…", icon = "trash" }
+local DEAD_ITEM = { id = DEAD_ID, title = "Show dead worktrees…", icon = "archive" }
 
 local function split_rows(rows)
   local live, dead = {}, {}
@@ -758,6 +761,7 @@ function M.setup(opts)
     title       = "Switch to the previous worktree",
     description = "Run wt switch - in the focused terminal and open that worktree's session.",
     category    = "Worktree",
+    keywords    = "git worktree previous worktrunk wt",
     run = function(ctx) return previous_worktree(ctx) end,
   }
 
@@ -766,6 +770,7 @@ function M.setup(opts)
     title       = "Switch to the main worktree",
     description = "Open the session for the main worktree path from wt list.",
     category    = "Worktree",
+    keywords    = "git worktree main worktrunk wt",
     run = function(ctx) return main_worktree(ctx) end,
   }
 
