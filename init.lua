@@ -174,7 +174,7 @@ local function items_for(rows, entries, extras)
 end
 
 local NEW_ITEM = { id = NEW_ID, title = "New worktree…", icon = "plus" }
-local REMOVE_ITEM = { id = REMOVE_ID, title = "Remove worktree…", icon = "trash" }
+local REMOVE_ITEM = { id = REMOVE_ID, title = "🗑️ Remove worktree…" }
 local DEAD_ITEM = { id = DEAD_ID, title = "Show dead worktrees…", icon = "archive" }
 
 local function split_rows(rows)
@@ -637,7 +637,7 @@ local function confirm_force()
   local choice, why, detail = rex.ui.pick{
     title       = "Remove dirty worktree",
     placeholder = "Uncommitted changes",
-    items       = { { id = FORCE_ID, title = "Force remove", icon = "trash" } },
+    items       = { { id = FORCE_ID, title = "🗑️ Force remove" } },
   }
   if prompt_declined(choice, why, detail) then return nil end
   if choice ~= FORCE_ID then raise("unexpected pick result") end
