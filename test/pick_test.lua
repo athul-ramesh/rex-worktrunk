@@ -139,7 +139,7 @@ do
       and items[2].detail == "dirty" and items[2].selected == nil
       and items[3].id == "dead" and items[3].title == "Show dead worktrees…"
       and items[4].id == "new" and items[4].title == "New worktree…" and items[4].icon == "plus"
-      and items[5].id == "remove" and items[5].title == "Remove worktree…",
+      and items[5].id == "remove" and items[5].title == "🗑️ Remove worktree…",
     items[5] and items[5].title)
   t.check("runs wt list in the focused terminal",
     wt_calls()[1].args.cwd == MAIN and has(wt_calls()[1].args.argv, "--format=json")
@@ -162,7 +162,7 @@ do
       and items[1].subtitle == "~/projects/rexproject/rex-agent.nvim"
       and items[2].id == "dead" and items[2].title == "Show dead worktrees…"
       and items[3].id == "new" and items[3].title == "New worktree…" and items[3].icon == "plus"
-      and items[4].id == "remove" and items[4].title == "Remove worktree…")
+      and items[4].id == "remove" and items[4].title == "🗑️ Remove worktree…")
 end
 
 do
@@ -180,7 +180,7 @@ do
       and items[1].id == "/private/tmp/rex-agent-open-seed-ready"
       and items[1].detail == "prunable, mismatch · 643b168"
       and items[1].subtitle == "/private/tmp/rex-agent-open-seed-ready"
-      and items[6].id == "remove" and items[6].title == "Remove worktree…"
+      and items[6].id == "remove" and items[6].title == "🗑️ Remove worktree…"
       and items[5].title == "arena/float-seed-2")
 end
 
@@ -534,6 +534,9 @@ do
   fake.ui_answers = { answer("remove"), answer(FEAT), answer(nil, "cancelled") }
   t.check("a dirty worktree asks before forcing, and cancel removes nothing",
     run(home) == nil and remove_call() == nil and fake:session(opened.session_id) ~= nil)
+  local force_item = fake:calls_to("ui.pick")[3].args.items[1]
+  t.check("the force remove option shows a trash can",
+    force_item.id == "force" and force_item.title == "🗑️ Force remove")
   fake.ui_answers = { answer("remove"), answer(FEAT), answer("force") }
   local closed = run(home)
   local argv = remove_call().args.argv
