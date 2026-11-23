@@ -37,7 +37,7 @@ Run `worktree`. Rex lists each live worktree from `wt list --format=json`. The t
 
 The detail line lists status tokens (`current`, `session`, `dirty`, `previous`, `duplicate`, `mismatch`), then a short commit id and subject after a middle dot when those are present. `session` means this plugin already has a Rex session for that path. `duplicate` means another worktree uses the same branch. `mismatch` means the checkout does not match that branch. Prunable worktrees are not in this list.
 
-The list ends with **New worktree…** and **Remove worktree…**. Rex adds **Show dead worktrees…** when any worktree is prunable.
+The list ends with **New worktree…**, **Customize worktree…**, and **Remove worktree…**. Rex adds **Show dead worktrees…** when any worktree is prunable.
 
 Choose a row. The plugin runs `wt switch` on that worktree's path, in the focused terminal's directory:
 
@@ -62,6 +62,16 @@ wt switch --create --base @ --no-cd --format=json <branch>
 `@` means the branch checked out in the terminal's worktree. The new worktree then opens as its own session.
 
 Cancel the name prompt and nothing is created. A name that is empty or only spaces is ignored. If `wt` refuses the name, the action fails with wt's message and no session is opened.
+
+Choose **Customize worktree…** to set the directory as well as the branch. Rex asks for the branch name, then for the directory. The directory is filled in and you can edit it before **Create**.
+
+The filled-in path is a sibling of the current worktree. Its parent is the directory that contains the current worktree. Its folder name is the main checkout's folder name, a dot, and the branch name with each `/` replaced by `-`. When the list has no main checkout, the folder name uses the current worktree's folder name. When no worktree is current, Rex uses the focused terminal's working directory as the current worktree.
+
+```sh
+wt switch --create --path <directory> --base @ --no-cd --format=json <branch>
+```
+
+The plugin passes the directory you leave in the field after expanding a leading `~/` and stripping a trailing slash. Cancel either prompt and nothing is created. An empty branch or an empty directory is ignored with a warning.
 
 ## Show dead worktrees
 

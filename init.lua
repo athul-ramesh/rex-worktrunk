@@ -23,8 +23,9 @@ local wt_program = nil
 
 local SHELL_FLAVOR     = "com.superlogical.terminal.shell"
 local TERMINAL_CREATOR = "com.superlogical.terminal"
-local NEW_ID    = "new"
-local DEAD_ID   = "dead"
+local NEW_ID       = "new"
+local CUSTOMIZE_ID = "customize"
+local DEAD_ID      = "dead"
 local REMOVE_ID = "remove"
 local FORCE_ID  = "force"
 local WT_PREVIOUS = "-"
@@ -63,6 +64,16 @@ end
 
 local function basename(path)
   return path:match("([^/]+)/*$") or path
+end
+
+local function dirname(path)
+  local parent = path:match("^(.*)/[^/]+/*$")
+  if not parent or parent == "" then return "/" end
+  return parent
+end
+
+local function sanitize_branch(branch)
+  return (branch:gsub("/", "-"))
 end
 
 local function display_path(path)
@@ -174,6 +185,7 @@ local function items_for(rows, entries, extras)
 end
 
 local NEW_ITEM = { id = NEW_ID, title = "New worktree…", icon = "plus" }
+local CUSTOMIZE_ITEM = { id = CUSTOMIZE_ID, title = "Customize worktree…" }
 local REMOVE_ITEM = { id = REMOVE_ID, title = "🗑️ Remove worktree…" }
 local DEAD_ITEM = { id = DEAD_ID, title = "Show dead worktrees…", icon = "archive" }
 
@@ -207,8 +219,8 @@ local function intent_switch_to(target, branch)
   return { kind = "switch", path = target, branch = branch }
 end
 
-local function intent_create(branch, base)
-  return { kind = "create", branch = branch, base = base }
+local function intent_create(branch, base, path)
+  return { kind = "create", branch = branch, base = base, path = path }
 end
 
 local function intent_remove(path, force)
@@ -272,6 +284,10 @@ local function switch_argv(intent)
   local argv = { resolve_wt(), "switch", "--format=json", "--no-cd" }
   if intent.kind == "create" then
     argv[#argv + 1] = "--create"
+    if intent.path then
+      argv[#argv + 1] = "--path"
+      argv[#argv + 1] = intent.path
+    end
     if intent.base then
       argv[#argv + 1] = "--base"
       argv[#argv + 1] = intent.base
@@ -616,20 +632,57 @@ local function open_switched(ctx, listed, outcome)
   })
 end
 
+local function sibling_prefill(listed, cwd, branch)
+  local current = listed and listed.current
+  if type(current) ~= "string" or current == "" then current = cwd end
+  local primary = listed and listed.main
+  if type(primary) ~= "string" or primary == "" then primary = nil end
+  current = normalize_path(current)
+  local stem = basename(primary and normalize_path(primary) or current)
+  local parent = dirname(current)
+  local folder = stem .. "." .. sanitize_branch(branch)
+  if parent == "/" then return "/" .. folder end
+  return parent .. "/" .. folder
+end
+
+local function prompt_text(spec, empty_warning)
+  local value, why, detail = rex.ui.input(spec)
+  if prompt_declined(value, why, detail) then return nil end
+  if type(value) ~= "string" then raise("unexpected input result") end
+  value = trim(value)
+  if value == "" then
+    warn(empty_warning)
+    return nil
+  end
+  return value
+end
+
 local function create_worktree(ctx, cwd, listed)
-  local name, why, detail = rex.ui.input{
+  local name = prompt_text({
     title       = "New worktree",
     placeholder = "branch name",
     confirm     = "Create",
-  }
-  if prompt_declined(name, why, detail) then return end
-  if type(name) ~= "string" then raise("unexpected input result") end
-  name = trim(name)
-  if name == "" then
-    warn("branch name is empty")
-    return
-  end
+  }, "branch name is empty")
+  if not name then return end
   local outcome = switch_worktree(cwd, intent_create(name, create_base()))
+  return open_switched(ctx, listed, outcome)
+end
+
+local function customize_worktree(ctx, cwd, listed)
+  local name = prompt_text({
+    title       = "Customize worktree",
+    placeholder = "branch name",
+    confirm     = "Next",
+  }, "branch name is empty")
+  if not name then return end
+  local directory = prompt_text({
+    title       = "Worktree directory",
+    placeholder = "directory",
+    confirm     = "Create",
+    value       = sibling_prefill(listed, cwd, name),
+  }, "directory is empty")
+  if not directory then return end
+  local outcome = switch_worktree(cwd, intent_create(name, create_base(), normalize_path(directory)))
   return open_switched(ctx, listed, outcome)
 end
 
@@ -670,6 +723,7 @@ local function open_worktree(ctx)
   local extras = {}
   if #dead > 0 then extras[#extras + 1] = DEAD_ITEM end
   extras[#extras + 1] = NEW_ITEM
+  extras[#extras + 1] = CUSTOMIZE_ITEM
   extras[#extras + 1] = REMOVE_ITEM
 
   local picked = ask("Worktree", items_for(live, entries, extras))
@@ -683,6 +737,7 @@ local function open_worktree(ctx)
   end
 
   if picked == NEW_ID then return create_worktree(ctx, cwd, listed) end
+  if picked == CUSTOMIZE_ID then return customize_worktree(ctx, cwd, listed) end
   if picked == REMOVE_ID then
     return remove_chosen(ctx, cwd, listed, removable_rows(scope), entries)
   end

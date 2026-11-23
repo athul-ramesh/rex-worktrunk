@@ -80,6 +80,12 @@ local function has(argv, value)
   return false
 end
 
+local function argv_index(argv, flag)
+  for i, v in ipairs(argv) do
+    if v == flag then return i end
+  end
+end
+
 local function effects()
   local names = {}
   for _, call in ipairs(fake.calls) do
@@ -130,8 +136,8 @@ do
   local items = pick.args.items
   t.check("asks with the worktree picker",
     pick.args.title == "Worktree" and pick.args.placeholder == "Filter worktrees")
-  t.check("lists live rows, then dead, new, and remove",
-    #items == 5
+  t.check("lists live rows, then dead, new, customize, and remove",
+    #items == 6
       and items[1].id == MAIN and items[1].title == "main" and items[1].icon == "folder"
       and items[1].detail == "current, dirty" and items[1].subtitle == MAIN
       and items[1].selected == true
@@ -139,8 +145,9 @@ do
       and items[2].detail == "dirty" and items[2].selected == nil
       and items[3].id == "dead" and items[3].title == "Show dead worktrees…"
       and items[4].id == "new" and items[4].title == "New worktree…" and items[4].icon == "plus"
-      and items[5].id == "remove" and items[5].title == "🗑️ Remove worktree…",
-    items[5] and items[5].title)
+      and items[5].id == "customize" and items[5].title == "Customize worktree…"
+      and items[6].id == "remove" and items[6].title == "🗑️ Remove worktree…",
+    items[6] and items[6].title)
   t.check("runs wt list in the focused terminal",
     wt_calls()[1].args.cwd == MAIN and has(wt_calls()[1].args.argv, "--format=json")
       and wt_calls()[1].args.argv[2] == "list")
@@ -156,13 +163,14 @@ do
   fake.env.HOME = nil
   local items = fake:calls_to("ui.pick")[1].args.items
   t.check("hides prunable rows and shows the commit on the live row",
-    #items == 4
+    #items == 5
       and items[1].title == "main" and items[1].icon == "folder"
       and items[1].detail == "current · 6e42508 Merge pull request #7 from athul-ramesh/fix/private-forward-ready"
       and items[1].subtitle == "~/projects/rexproject/rex-agent.nvim"
       and items[2].id == "dead" and items[2].title == "Show dead worktrees…"
       and items[3].id == "new" and items[3].title == "New worktree…" and items[3].icon == "plus"
-      and items[4].id == "remove" and items[4].title == "🗑️ Remove worktree…")
+      and items[4].id == "customize" and items[4].title == "Customize worktree…"
+      and items[5].id == "remove" and items[5].title == "🗑️ Remove worktree…")
 end
 
 do
@@ -190,8 +198,8 @@ do
   fake.ui_answers = { answer(nil, "cancelled") }
   run(fake:add_session("home"))
   local items = fake:calls_to("ui.pick")[1].args.items
-  t.check("an empty repo still offers new and remove",
-    #items == 2 and items[1].id == "new" and items[2].id == "remove")
+  t.check("an empty repo still offers new, customize, and remove",
+    #items == 3 and items[1].id == "new" and items[2].id == "customize" and items[3].id == "remove")
 end
 
 do
@@ -205,8 +213,8 @@ do
   run(fake:add_session("home"))
   local items = fake:calls_to("ui.pick")[1].args.items
   t.check("keeps one row when two items share a path",
-    #items == 3 and items[1].id == FIX and items[1].title == "one"
-      and items[2].id == "new" and items[3].id == "remove")
+    #items == 4 and items[1].id == FIX and items[1].title == "one"
+      and items[2].id == "new" and items[3].id == "customize" and items[4].id == "remove")
 end
 
 t.section("switching to the chosen worktree")
@@ -301,11 +309,12 @@ do
   for i, v in ipairs(switch) do if v == "--base" then base_at = i end end
   t.check("creates from the trimmed name and the default base",
     result and result.path == created_path and result.created
-      and has(switch, "--create") and not has(switch, "--yes")
+      and has(switch, "--create") and not has(switch, "--yes") and not has(switch, "--path")
       and base_at and switch[base_at + 1] == "@" and switch[#switch] == "feature/x")
   local input = fake:calls_to("ui.input")[1].args
   t.check("asks for the branch name",
-    input.title == "New worktree" and input.confirm == "Create" and input.placeholder == "branch name")
+    input.title == "New worktree" and input.confirm == "Create" and input.placeholder == "branch name"
+      and input.value == nil)
   t.check("does not warn about wt's success message", #fake:warnings() == 0, t.show(fake:warnings()))
 end
 
@@ -337,6 +346,194 @@ do
     base_at and switch[base_at + 1] == "develop"
       and err and err:find("Branch feature/x already exists", 1, true)
       and #fake:calls_to("session.create") == 0, err)
+end
+
+t.section("customizing a new worktree")
+
+do
+  fresh()
+  local created_path = "/src/app.feature-x"
+  fake.dirs[created_path] = true
+  stub(SMALL_LIST, {
+    ok = true, code = 0,
+    stdout = '{"action":"created","branch":"feature/x","path":"/src/app.feature-x","created_branch":true}\n',
+    stderr = "",
+  })
+  fake.ui_answers = { answer("customize"), answer("feature/x"), answer(created_path) }
+  local result = run(fake:add_session("home"))
+  local switch = wt_calls()[2].args.argv
+  local path_at = argv_index(switch, "--path")
+  local base_at = argv_index(switch, "--base")
+  t.check("customize creates with --path and the branch",
+    result and result.path == created_path and result.created
+      and has(switch, "--create") and not has(switch, "--yes")
+      and path_at and switch[path_at + 1] == created_path
+      and base_at and switch[base_at + 1] == "@"
+      and switch[#switch] == "feature/x")
+  local inputs = fake:calls_to("ui.input")
+  t.check("asks for the branch, then a directory prefilled beside the current worktree",
+    #inputs == 2
+      and inputs[1].args.title == "Customize worktree"
+      and inputs[1].args.placeholder == "branch name"
+      and inputs[1].args.confirm == "Next"
+      and inputs[1].args.value == nil
+      and inputs[2].args.title == "Worktree directory"
+      and inputs[2].args.placeholder == "directory"
+      and inputs[2].args.confirm == "Create"
+      and inputs[2].args.value == "/src/app.feature-x")
+  t.check("lists, asks twice, creates, then opens the session",
+    t.same_list(effects(), {
+      "wt list", "ui.pick", "ui.input", "ui.input", "wt switch", "session.create", "client.queue",
+    }), t.show(effects()))
+end
+
+do
+  fresh()
+  local edited = "/tmp/custom-wt"
+  fake.dirs[edited] = true
+  stub(SMALL_LIST, {
+    ok = true, code = 0,
+    stdout = '{"action":"created","branch":"feature/x","path":"/tmp/custom-wt"}\n',
+    stderr = "",
+  })
+  fake.ui_answers = { answer("customize"), answer("  feature/x  "), answer("  " .. edited .. "  ") }
+  local result = run(fake:add_session("home"))
+  local switch = wt_calls()[2].args.argv
+  local path_at = argv_index(switch, "--path")
+  t.check("passes the trimmed directory the user typed",
+    result and result.path == edited
+      and path_at and switch[path_at + 1] == edited
+      and switch[#switch] == "feature/x")
+end
+
+do
+  fresh()
+  fake.dirs["/src/repo.feature-x"] = true
+  stub(SMALL_LIST, {
+    ok = true, code = 0,
+    stdout = '{"action":"created","branch":"feature/x","path":"/src/repo.feature-x"}\n',
+    stderr = "",
+  })
+  fake.ui_answers = { answer("customize"), answer("feature/x"), answer("repo.feature-x") }
+  local result = run(fake:add_session("home"))
+  local switch = wt_calls()[2].args.argv
+  local path_at = argv_index(switch, "--path")
+  t.check("passes a relative directory as entered",
+    result and result.path == "/src/repo.feature-x"
+      and path_at and switch[path_at + 1] == "repo.feature-x")
+end
+
+do
+  fresh()
+  fake.env.HOME = "/Users/athul"
+  local created_path = "/Users/athul/work/app.feature-x"
+  fake.dirs[created_path] = true
+  stub(SMALL_LIST, {
+    ok = true, code = 0,
+    stdout = '{"action":"created","branch":"feature/x","path":"/Users/athul/work/app.feature-x"}\n',
+    stderr = "",
+  })
+  fake.ui_answers = {
+    answer("customize"),
+    answer("feature/x"),
+    answer("~/work/app.feature-x/"),
+  }
+  local result = run(fake:add_session("home"))
+  local switch = wt_calls()[2].args.argv
+  local path_at = argv_index(switch, "--path")
+  t.check("expands ~/ and strips a trailing slash on the directory",
+    result and result.path == created_path
+      and path_at and switch[path_at + 1] == created_path)
+end
+
+do
+  fresh{ base = false }
+  local created_path = "/src/app.feature-x"
+  fake.dirs[created_path] = true
+  stub(SMALL_LIST, {
+    ok = true, code = 0,
+    stdout = '{"action":"created","branch":"feature/x","path":"/src/app.feature-x"}\n',
+    stderr = "",
+  })
+  fake.ui_answers = { answer("customize"), answer("feature/x"), answer(created_path) }
+  run(fake:add_session("home"))
+  local switch = wt_calls()[2].args.argv
+  t.check("customize omits --base when base is false",
+    has(switch, "--create") and has(switch, "--path") and not has(switch, "--base")
+      and switch[#switch] == "feature/x")
+end
+
+do
+  fresh()
+  fake.cwd = "/other/app.feat"
+  local listed = [[{
+    "schema": 2,
+    "items": [
+      {"branch": "main", "worktree": {"path": "/src/app", "main": true}},
+      {"branch": "feat/diff", "worktree": {"path": "/other/app.feat", "current": true}}
+    ]
+  }]]
+  stub(listed, { ok = true, code = 0, stdout = "", stderr = "" })
+  fake.ui_answers = { answer("customize"), answer("feat/deep/name"), answer(nil, "cancelled") }
+  run(fake:add_session("home"))
+  local directory = fake:calls_to("ui.input")[2].args.value
+  t.check("prefill is the current worktree's parent and the main checkout's name",
+    directory == "/other/app.feat-deep-name" and #wt_calls() == 1, directory)
+end
+
+do
+  fresh()
+  fake.cwd = "/work/repo"
+  local listed = [[{
+    "schema": 2,
+    "items": [
+      {"branch": "main", "worktree": {"path": "/src/app", "main": true}}
+    ]
+  }]]
+  stub(listed, { ok = true, code = 0, stdout = "", stderr = "" })
+  fake.ui_answers = { answer("customize"), answer("feature/x"), answer(nil, "cancelled") }
+  run(fake:add_session("home"))
+  local directory = fake:calls_to("ui.input")[2].args.value
+  t.check("prefill uses the terminal directory when no worktree is current",
+    directory == "/work/app.feature-x", directory)
+end
+
+do
+  fresh()
+  stub(SMALL_LIST, { ok = true, code = 0, stdout = "", stderr = "" })
+  fake.ui_answers = { answer("customize"), answer(nil, "cancelled") }
+  t.check("cancelling the customize branch creates nothing",
+    run(fake:add_session("home")) == nil and #wt_calls() == 1
+      and #fake:calls_to("ui.input") == 1 and #fake:warnings() == 0)
+end
+
+do
+  fresh()
+  stub(SMALL_LIST, { ok = true, code = 0, stdout = "", stderr = "" })
+  fake.ui_answers = { answer("customize"), answer("   ") }
+  t.check("an empty customize branch does not ask for a directory",
+    run(fake:add_session("home")) == nil and #wt_calls() == 1
+      and #fake:calls_to("ui.input") == 1
+      and fake:warnings()[1]:find("branch name is empty", 1, true))
+end
+
+do
+  fresh()
+  stub(SMALL_LIST, { ok = true, code = 0, stdout = "", stderr = "" })
+  fake.ui_answers = { answer("customize"), answer("feature/x"), answer(nil, "cancelled") }
+  t.check("cancelling the directory creates nothing",
+    run(fake:add_session("home")) == nil and #wt_calls() == 1
+      and #fake:calls_to("ui.input") == 2 and #fake:warnings() == 0)
+end
+
+do
+  fresh()
+  stub(SMALL_LIST, { ok = true, code = 0, stdout = "", stderr = "" })
+  fake.ui_answers = { answer("customize"), answer("feature/x"), answer("   ") }
+  t.check("an empty directory creates nothing, with a warning",
+    run(fake:add_session("home")) == nil and #wt_calls() == 1
+      and #fake:calls_to("ui.input") == 2
+      and fake:warnings()[1]:find("directory is empty", 1, true))
 end
 
 t.section("leaving the prompt")
